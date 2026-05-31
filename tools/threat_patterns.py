@@ -107,8 +107,20 @@ _PATTERNS: List[Tuple[str, str, str]] = [
     (r'authorized_keys', "ssh_backdoor", "strict"),
     (r'\$HOME/\.ssh|\~/\.ssh', "ssh_access", "strict"),
     (r'\$HOME/\.hermes/\.env|\~/\.hermes/\.env', "hermes_env", "strict"),
-    (r'(update|modify|edit|write|change|append|add\s+to)\s+.*(?:AGENTS\.md|CLAUDE\.md|\.cursorrules|\.clinerules)', "agent_config_mod", "strict"),
-    (r'(update|modify|edit|write|change|append|add\s+to)\s+.*\.hermes/(config\.yaml|SOUL\.md)', "hermes_config_mod", "strict"),
+    # Write directives must target the config file as a direct object —
+    # ``modify .cursorrules``, ``update AGENTS.md``, ``edit the CLAUDE.md``,
+    # ``write to AGENTS.md``. The original `\s+.*` bridge between verb and
+    # filename was greedy and matched any text — including unrelated
+    # clauses and sentence breaks — so legitimate memory entries that
+    # merely *referenced* the file ("We write tests in pytest. Conventions
+    # live in AGENTS.md.") were silently replaced with [BLOCKED:]
+    # placeholders at memory-load time. The bridge is now restricted to
+    # a small set of connector tokens (to, in, into, the, a, an), which
+    # captures verb-direct-object phrasing and rejects intervening
+    # clauses.  Note: explicit negations ("do not edit AGENTS.md") are
+    # still paranoia-blocked at strict scope.
+    (r'(update|modify|edit|write|change|append|add\s+to)\s+(?:(?:to|in|into|the|a|an)\s+){0,3}(?:AGENTS\.md|CLAUDE\.md|\.cursorrules|\.clinerules)', "agent_config_mod", "strict"),
+    (r'(update|modify|edit|write|change|append|add\s+to)\s+(?:(?:to|in|into|the|a|an)\s+){0,3}\.hermes/(config\.yaml|SOUL\.md)', "hermes_config_mod", "strict"),
 
     # ── Hardcoded secrets ────────────────────────────────────────────
     (r'(?:api[_-]?key|token|secret|password)\s*[=:]\s*["\'][A-Za-z0-9+/=_-]{20,}', "hardcoded_secret", "strict"),
